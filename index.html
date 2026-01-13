@@ -276,15 +276,21 @@
             // Acestream: abrir directamente
             window.location.href = url.includes('acestream://') ? url : 'acestream://' + url;
         } else {
-            // WEB: Delegar a Wiseplay directamente
+            // WEB: Solución definitiva para Wiseplay
             currentUrl = url;
             showPlayerModal();
             
-            // Usar timeout para asegurar que el modal se muestra antes de redirigir
+            // ESTO ES LA CLAVE: Cargar en el iframe TOP de Wiseplay
+            // con un pequeño delay para que el modal se muestre primero
             setTimeout(() => {
-                // Redirigir a la URL directamente
-                // Wiseplay detectará si es un stream y usará su reproductor nativo
-                window.location.href = url;
+                // Cambiar la URL del iframe principal (no redirigir)
+                if (window.top && window.top !== window) {
+                    // Estamos en un iframe, cambiamos el src del padre
+                    window.top.location.href = url;
+                } else {
+                    // Fallback por si acaso
+                    window.location.href = url;
+                }
             }, 300);
         }
     }
@@ -299,6 +305,9 @@
         // Volver atrás si es posible
         if (window.history.length > 1) {
             window.history.back();
+        } else {
+            // Recargar la página si no hay historial
+            window.location.reload();
         }
     }
 
