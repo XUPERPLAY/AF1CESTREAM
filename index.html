@@ -63,43 +63,26 @@
 
         .main-content { padding-top: 170px; height: 100vh; overflow-y: auto; padding-bottom: 100px; box-sizing: border-box; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; padding: 10px; }
+        
         .card {
-            background: var(--tarjeta); padding: 12px; border-radius: 12px; text-align: center;
-            border: 1px solid rgba(255,255,255,0.1); transition: 0.3s;
-            cursor: pointer;
-            position: relative; /* Para el enlace absoluto */
+            background: var(--tarjeta); 
+            border-radius: 12px; 
+            border: 1px solid rgba(255,255,255,0.1); 
+            transition: 0.3s;
+            position: relative;
         }
         .card:hover { border-color: var(--oro); transform: translateY(-3px); }
-        .card img { width: 40px; height: 40px; margin-bottom: 8px; }
-        .card span { font-size: 10px; color: #eee; display: block; font-weight: bold; line-height: 1.2; }
-
-        .playing-modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 2000; flex-direction: column; justify-content: center; align-items: center;
+        
+        .card-link {
+            display: block;
+            padding: 12px;
+            text-align: center;
+            text-decoration: none;
+            color: white;
         }
         
-        .playing-info {
-            color: var(--oro); font-size: 16px; font-weight: bold; margin-bottom: 20px;
-            text-align: center; padding: 0 20px;
-        }
-
-        .spinner {
-            width: 50px; height: 50px; border: 3px solid rgba(255, 193, 7, 0.3);
-            border-top: 3px solid var(--oro); border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .close-btn {
-            background: var(--rojo); color: white; border: none; 
-            padding: 8px 16px; border-radius: 4px; font-size: 12px; font-weight: bold; 
-            cursor: pointer; text-transform: uppercase; box-shadow: 0 0 10px rgba(0,0,0,0.8);
-        }
+        .card-link img { width: 40px; height: 40px; margin-bottom: 8px; display: inline-block; }
+        .card-link span { font-size: 10px; color: #eee; display: block; font-weight: bold; line-height: 1.2; }
 
         footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; padding: 10px; font-size: 9px; color: var(--oro); background: rgba(5,5,5,0.98); border-top: 1px solid var(--oro); }
     </style>
@@ -128,12 +111,6 @@
     <div id="channel-list" class="grid" style="display:none;"></div>
 </div>
 
-<div id="player-modal" class="playing-modal">
-    <div class="spinner"></div>
-    <div class="playing-info">CARGANDO REPRODUCTOR...</div>
-    <button class="close-btn" onclick="closePlayer()">VOLVER A LISTA</button>
-</div>
-
 <footer><b>AF1CIONADOS</b> • EL DEPORTE EN TUS MANOS</footer>
 
 <script>
@@ -145,7 +122,7 @@
     const LOGO = 'https://i.postimg.cc/hPgpp1t3/1768043171823-removebg-preview.png';
 
     let channels = [];
-    let currentUrl = '';
+    let currentListUrl = null; // Para saber qué lista estamos cargando
 
     function setActive(el) {
         document.querySelectorAll('.list-btn').forEach(b => b.classList.remove('active'));
@@ -156,17 +133,50 @@
         document.getElementById('loading').style.display = 'none';
         const list = document.getElementById('channel-list');
         list.style.display = 'grid';
-        list.innerHTML = channels.map((c, i) => `
-            <div class="card" onclick="play(${i})">
-                <img src="${LOGO}" alt="Logo">
-                <span>${c.name}</span>
-            </div>
-        `).join('');
+        
+        // Generar ENLACES DIRECTOS para cada canal
+        list.innerHTML = channels.map((c, i) => {
+            let url = c.link.trim();
+            
+            // Preparar URLs para Wiseplay
+            if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                let id = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('/').pop().split('?')[0];
+                url = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
+            }
+
+            // Para acestream, crear enlace directo
+            if (c.type === 'ace' || url.includes('acestream://')) {
+                const aceUrl = url.includes('acestream://') ? url : 'acestream://' + url;
+                return `
+                    <div class="card">
+                        <a href="${aceUrl}" 
+                           class="card-link" 
+                           target="_top">
+                            <img src="${LOGO}" alt="Logo">
+                            <span>${c.name}</span>
+                        </a>
+                    </div>
+                `;
+            }
+
+            // Para streams web, usar el enlace directamente
+            return `
+                <div class="card">
+                    <a href="${url}" 
+                       class="card-link" 
+                       target="_top">
+                        <img src="${LOGO}" alt="Logo">
+                        <span>${c.name}</span>
+                    </a>
+                </div>
+            `;
+        }).join('');
     }
 
     function loadM3U(u, f, el) {
         setActive(el);
         channels = [];
+        currentListUrl = u; // Guardar URL de la lista actual
         document.getElementById('loading').style.display = 'block';
         fetch(u)
             .then(r => r.text())
@@ -192,6 +202,7 @@
     function loadXML_Ev2(el) {
         setActive(el);
         channels = [];
+        currentListUrl = XML_EV2;
         document.getElementById('loading').style.display = 'block';
         fetch(XML_EV2)
             .then(r => r.text())
@@ -216,6 +227,7 @@
     function loadXML_Ev3(el) {
         setActive(el);
         channels = [];
+        currentListUrl = XML_EV3;
         document.getElementById('loading').style.display = 'block';
         fetch(XML_EV3)
             .then(r => r.text())
@@ -241,6 +253,7 @@
     function loadXML_Ev4(el) {
         setActive(el);
         channels = [];
+        currentListUrl = XML_EV4;
         document.getElementById('loading').style.display = 'block';
         fetch(XML_EV4)
             .then(r => r.text())
@@ -262,73 +275,65 @@
             });
     }
 
-    function play(i) {
-        const c = channels[i];
-        if (!c || !c.link) return;
-        
-        let url = c.link.trim();
-        
-        // Manejo YouTube
-        if (url.includes('youtube.com') || url.includes('youtu.be')) {
-            let id = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('/').pop().split('?')[0];
-            url = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
-        }
-
-        if (c.type === 'ace' || url.includes('acestream://')) {
-            // Acestream: abrir directamente
-            window.location.href = url.includes('acestream://') ? url : 'acestream://' + url;
-        } else {
-            // WEB: Solución definitiva - enlace con target="_top"
-            currentUrl = url;
-            showPlayerModal();
-            
-            // Crear un enlace temporal con target="_top"
-            // Esto permite que Wiseplay lo intercepte y use su reproductor nativo
-            const link = document.createElement('a');
-            link.href = url;
-            link.target = '_top';  // CLAVE: Abre en el iframe principal de Wiseplay
-            link.style.display = 'none';
-            document.body.appendChild(link);
-            
-            setTimeout(() => {
-                link.click();
-                document.body.removeChild(link);
-            }, 100);
-        }
-    }
-
-    function showPlayerModal() {
-        document.getElementById('player-modal').style.display = 'flex';
-    }
-
-    function closePlayer() {
-        document.getElementById('player-modal').style.display = 'none';
-        currentUrl = '';
-        // SOLUCIÓN DEFINITIVA para volver - Recargar la lista
-        window.location.reload();  // Esto vuelve a cargar el HTML inicial
-    }
-
     function filter() {
         const q = document.getElementById('search').value.toLowerCase();
         const f = channels.filter(c => c.name.toLowerCase().includes(q));
-        document.getElementById('channel-list').innerHTML = f.map((c, i) => {
-            const originalIndex = channels.indexOf(c);
-            return `<div class="card" onclick="play(${originalIndex})"><img src="${LOGO}"><span>${c.name}</span></div>`;
+        
+        const list = document.getElementById('channel-list');
+        list.innerHTML = f.map((c, i) => {
+            let url = c.link.trim();
+            
+            if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                let id = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('/').pop().split('?')[0];
+                url = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
+            }
+
+            return `
+                <div class="card">
+                    <a href="${url}" 
+                       class="card-link" 
+                       target="_top">
+                        <img src="${LOGO}" alt="Logo">
+                        <span>${c.name}</span>
+                    </a>
+                </div>
+            `;
         }).join('');
     }
 
     // Cargar lista inicial
     loadM3U(MAIN_M3U, true, document.getElementById('btn-main'));
 
-    // Detección de vuelta desde reproductor
-    window.addEventListener('popstate', function(event) {
-        document.getElementById('player-modal').style.display = 'none';
-    });
+    // BOTÓN VOLVER PERSONALIZADO (opcional, en caso de que el de Wiseplay no funcione)
+    // Añado un botón flotante invisible que solo aparece cuando hay un error
+    const backButton = document.createElement('div');
+    backButton.innerHTML = 'VOLVER';
+    backButton.style.cssText = `
+        position: fixed;
+        top: 50px;
+        right: 10px;
+        background: var(--rojo);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: bold;
+        cursor: pointer;
+        z-index: 9999;
+        display: none;
+        text-transform: uppercase;
+    `;
+    backButton.onclick = () => {
+        // Si estamos en Wiseplay, recargar el HTML
+        window.location.href = window.location.href.split('?')[0] + '?t=' + Date.now();
+    };
+    document.body.appendChild(backButton);
 
-    // Ocultar modal cuando se vuelve a la página
-    window.addEventListener('pageshow', function(event) {
-        if (event.persisted || performance.navigation.type === 2) {
-            document.getElementById('player-modal').style.display = 'none';
+    // Mostrar botón si detectamos que estamos fuera de la lista
+    window.addEventListener('load', () => {
+        // Si la URL cambió (por ejemplo, después de reproducir), muestra el botón
+        if (window.location.href !== window.location.origin + window.location.pathname) {
+            backButton.style.display = 'block';
         }
     });
 </script>
