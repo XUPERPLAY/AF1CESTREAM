@@ -66,6 +66,8 @@
         .card {
             background: var(--tarjeta); padding: 12px; border-radius: 12px; text-align: center;
             border: 1px solid rgba(255,255,255,0.1); transition: 0.3s;
+            cursor: pointer;
+            position: relative; /* Para el enlace absoluto */
         }
         .card:hover { border-color: var(--oro); transform: translateY(-3px); }
         .card img { width: 40px; height: 40px; margin-bottom: 8px; }
@@ -276,22 +278,22 @@
             // Acestream: abrir directamente
             window.location.href = url.includes('acestream://') ? url : 'acestream://' + url;
         } else {
-            // WEB: Solución definitiva para Wiseplay
+            // WEB: Solución definitiva - enlace con target="_top"
             currentUrl = url;
             showPlayerModal();
             
-            // ESTO ES LA CLAVE: Cargar en el iframe TOP de Wiseplay
-            // con un pequeño delay para que el modal se muestre primero
+            // Crear un enlace temporal con target="_top"
+            // Esto permite que Wiseplay lo intercepte y use su reproductor nativo
+            const link = document.createElement('a');
+            link.href = url;
+            link.target = '_top';  // CLAVE: Abre en el iframe principal de Wiseplay
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            
             setTimeout(() => {
-                // Cambiar la URL del iframe principal (no redirigir)
-                if (window.top && window.top !== window) {
-                    // Estamos en un iframe, cambiamos el src del padre
-                    window.top.location.href = url;
-                } else {
-                    // Fallback por si acaso
-                    window.location.href = url;
-                }
-            }, 300);
+                link.click();
+                document.body.removeChild(link);
+            }, 100);
         }
     }
 
@@ -302,13 +304,8 @@
     function closePlayer() {
         document.getElementById('player-modal').style.display = 'none';
         currentUrl = '';
-        // Volver atrás si es posible
-        if (window.history.length > 1) {
-            window.history.back();
-        } else {
-            // Recargar la página si no hay historial
-            window.location.reload();
-        }
+        // SOLUCIÓN DEFINITIVA para volver - Recargar la lista
+        window.location.reload();  // Esto vuelve a cargar el HTML inicial
     }
 
     function filter() {
@@ -322,6 +319,11 @@
 
     // Cargar lista inicial
     loadM3U(MAIN_M3U, true, document.getElementById('btn-main'));
+
+    // Detección de vuelta desde reproductor
+    window.addEventListener('popstate', function(event) {
+        document.getElementById('player-modal').style.display = 'none';
+    });
 
     // Ocultar modal cuando se vuelve a la página
     window.addEventListener('pageshow', function(event) {
