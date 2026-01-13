@@ -2,239 +2,106 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AF1CESTREAM</title>
     <style>
-        :root {
-            --oro: #ffc107;
-            --negro: #080808;
-            --tarjeta: rgba(30, 30, 30, 0.95);
-        }
-
-        body { background: #000; color: white; font-family: sans-serif; margin: 0; padding: 0; }
-
-        .header {
-            position: sticky; top: 0; background: var(--negro);
-            padding: 10px; border-bottom: 2px solid var(--oro);
-            text-align: center; z-index: 100;
-        }
-
-        .title { color: var(--oro); font-size: 18px; }
-        
-        .buttons {
-            display: flex; gap: 5px; justify-content: center;
-            margin: 10px 0; flex-wrap: wrap;
-        }
-        
-        .btn {
-            padding: 5px 8px; border: none; border-radius: 4px;
-            background: #222; color: white; font-size: 10px;
-            cursor: pointer; text-transform: uppercase;
-        }
-        
-        .btn.active { background: var(--oro); color: var(--negro); }
-
-        .grid { display: none; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; padding: 10px; }
-        .grid.active { display: grid; }
-        
-        .item {
-            background: var(--tarjeta); border-radius: 8px; text-align: center;
-            border: 1px solid transparent; transition: border 0.3s;
-        }
-        .item:hover { border-color: var(--oro); }
-        
-        .item a {
-            display: block; padding: 10px; color: white; text-decoration: none;
-            font-size: 9px; font-weight: bold;
-        }
-        
+        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; }
+        .header { background: #111; padding: 10px; border-bottom: 2px solid #ffc107; text-align: center; }
+        .btn { display: inline-block; padding: 8px 12px; margin: 5px; background: #333; color: #fff; border-radius: 4px; cursor: pointer; font-size: 10px; }
+        .btn.active { background: #ffc107; color: #000; }
+        .grid { padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+        .item { background: #222; border-radius: 8px; padding: 10px; text-align: center; }
+        .item a { color: #fff; text-decoration: none; font-size: 10px; }
         .item img { width: 40px; height: 40px; display: block; margin: 0 auto 5px; }
-        
-        .status { text-align: center; padding: 50px; color: var(--oro); }
-        .error { color: #ff4444; text-align: center; padding: 20px; }
-
-        /* BOTÓN VOLVER SIEMPRE VISIBLE */
-        .back-btn {
-            position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
-            background: #ff4444; color: white; padding: 8px 16px;
-            border: none; border-radius: 4px; font-weight: bold;
-            cursor: pointer; z-index: 9999; display: none;
-        }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div class="title">AF1CESTREAM</div>
-    <div class="buttons">
-        <button class="btn active" onclick="loadChannels('acex')">Canales Acex</button>
-        <button class="btn" onclick="loadChannels('events')">Eventos Acex</button>
-        <button class="btn" onclick="loadChannels('pre')">Canales Pre</button>
-        <button class="btn" onclick="loadChannels('pre-events')">Eventos Pre</button>
-        <button class="btn" onclick="loadChannels('vpn')">VPN</button>
-    </div>
+    <h2 style="color: #ffc107; margin: 5px 0;">AF1CESTREAM</h2>
+    <button class="btn active" onclick="load('acex')">Canales Acex</button>
+    <button class="btn" onclick="load('events')">Eventos Acex</button>
+    <button class="btn" onclick="load('pre')">Canales Pre</button>
+    <button class="btn" onclick="load('pre-events')">Eventos Pre</button>
+    <button class="btn" onclick="load('vpn')">VPN</button>
 </div>
 
-<div class="main">
-    <div id="status" class="status">Cargando lista...</div>
-    <div id="grid" class="grid"></div>
-    <div id="error" class="error" style="display:none;"></div>
-</div>
-
-<!-- BOTÓN VOLVER -->
-<button class="back-btn" onclick="goBack()">VOLVER A LISTA</button>
+<div id="grid" class="grid"></div>
 
 <script>
     const LOGO = 'https://i.postimg.cc/hPgpp1t3/1768043171823-removebg-preview.png';
-    
-    // LISTAS INCORPORADAS DIRECTAMENTE (para evitar fetch)
-    // Si esto funciona, el problema es CORS con GitHub raw
-    const LISTS = {
-        acex: [
-            {name: "⚠️ EJEMPLO - EDITA ESTO", link: "https://example.com/stream.m3u8", type: "web"}
-        ],
-        events: [
-            {name: "⚠️ SIN EVENTOS", link: "https://example.com/event.m3u8", type: "web"}
-        ],
-        pre: [
-            {name: "⚠️ SIN CANALES PRE", link: "https://example.com/pre.m3u8", type: "web"}
-        ]
-    };
 
-    function showError(msg) {
-        document.getElementById('status').style.display = 'none';
-        document.getElementById('grid').style.display = 'none';
-        document.getElementById('error').style.display = 'block';
-        document.getElementById('error').innerHTML = `<b>ERROR:</b> ${msg}<br><small>Prueba otra lista o recarga</small>`;
-    }
-
-    function render(channels) {
-        document.getElementById('status').style.display = 'none';
-        document.getElementById('error').style.display = 'none';
-        const grid = document.getElementById('grid');
-        grid.style.display = 'grid';
-        
-        grid.innerHTML = channels.map(ch => {
-            let url = ch.link.trim();
-            
-            if (url.includes('youtube.com') || url.includes('youtu.be')) {
-                const id = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('/').pop().split('?')[0];
-                url = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1`;
+    // FUNCIONES DE PARSEADO SENCILLO
+    function parseM3U(text) {
+        const ch = [];
+        const lines = text.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].startsWith('#EXTINF:')) {
+                const name = lines[i].split(',')[1]?.trim();
+                const link = lines[i + 1]?.trim();
+                if (name && link && link.startsWith('http')) ch.push({name, link});
             }
-
-            return `
-                <div class="item">
-                    <a href="${url}" target="_blank" rel="noreferrer">
-                        <img src="${LOGO}" alt="">${ch.name}
-                    </a>
-                </div>
-            `;
-        }).join('');
+        }
+        return ch;
     }
 
-    async function loadChannels(type) {
-        // Cambiar botón activo
+    function parseXML(text) {
+        const ch = [];
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(text, 'text/xml');
+        xml.querySelectorAll('channel, canal, evento, track').forEach(el => {
+            const name = el.getAttribute('name') || el.querySelector('nombre, title')?.textContent || 'Canal';
+            const url = el.querySelector('url')?.textContent;
+            if (url && url.startsWith('http')) ch.push({name, link: url});
+        });
+        return ch;
+    }
+
+    // CARGA CON TIMEOUT Y ERROR VISIBLE
+    async function load(type) {
         document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
         event.target.classList.add('active');
         
-        document.getElementById('status').style.display = 'block';
-        document.getElementById('grid').style.display = 'none';
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #ffc107;">CARGANDO...</div>';
         
-        // INTENTAR FETCH CON MANUAL CORS
+        const urls = {
+            acex: 'https://raw.githubusercontent.com/Icastresana/lista1/refs/heads/main/Probando',
+            events: 'https://raw.githubusercontent.com/Icastresana/lista1/main/eventos.m3u',
+            pre: 'https://raw.githubusercontent.com/tutw/platinsport-m3u-updater/refs/heads/main/lista_canales_DEPORTE-LIBRE.FANS.xml',
+            'pre-events': 'https://raw.githubusercontent.com/tutw/platinsport-m3u-updater/refs/heads/main/eventos_livetv_sx_con_reproductores.xml',
+            vpn: 'https://raw.githubusercontent.com/tutw/platinsport-m3u-updater/refs/heads/main/lista_sportsonlineci.xml'
+        };
+        
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), 8000); // 8s timeout
+        
         try {
-            const urls = {
-                acex: 'https://raw.githubusercontent.com/Icastresana/lista1/refs/heads/main/Probando',
-                events: 'https://raw.githubusercontent.com/Icastresana/lista1/main/eventos.m3u',
-                pre: 'https://raw.githubusercontent.com/tutw/platinsport-m3u-updater/refs/heads/main/lista_canales_DEPORTE-LIBRE.FANS.xml',
-                'pre-events': 'https://raw.githubusercontent.com/tutw/platinsport-m3u-updater/refs/heads/main/eventos_livetv_sx_con_reproductores.xml',
-                vpn: 'https://raw.githubusercontent.com/tutw/platinsport-m3u-updater/refs/heads/main/lista_sportsonlineci.xml'
-            };
+            const res = await fetch(urls[type], {signal: controller.signal});
+            if (!res.ok) throw new Error('Error de red');
+            const text = await res.text();
+            const channels = urls[type].endsWith('.m3u') ? parseM3U(text) : parseXML(text);
             
-            // Solución: Usar un proxy CORS
-            const proxy = 'https://corsproxy.io/?'; // Proxy público
-            const targetUrl = proxy + encodeURIComponent(urls[type]);
+            if (channels.length === 0) throw new Error('Lista vacía');
             
-            debug(`Fetching: ${targetUrl}`);
+            grid.innerHTML = channels.map(ch => `
+                <div class="item">
+                    <a href="${ch.link.trim()}" target="_blank" rel="noreferrer">
+                        <img src="${LOGO}">${ch.name}
+                    </a>
+                </div>
+            `).join('');
             
-            const response = await fetch(targetUrl, { 
-                method: 'GET',
-                headers: {'Accept': 'text/plain,application/xml'}
-            });
-            
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            
-            const text = await response.text();
-            debug(`Received ${text.length} chars`);
-            
-            let channels = [];
-            
-            // Parsear M3U
-            if (urls[type].endsWith('.m3u')) {
-                const lines = text.split('\n');
-                for (let i = 0; i < lines.length; i++) {
-                    if (lines[i].startsWith('#EXTINF:')) {
-                        const name = lines[i].split(',')[1]?.trim();
-                        const link = lines[i + 1]?.trim();
-                        if (name && link && !link.startsWith('#')) {
-                            channels.push({name, link, type: 'web'});
-                        }
-                    }
-                }
-            } else {
-                // Parsear XML
-                const parser = new DOMParser();
-                const xml = parser.parseFromString(text, 'text/xml');
-                
-                if (xml.querySelector('parsererror')) {
-                    throw new Error('XML inválido');
-                }
-                
-                if (type === 'pre') {
-                    xml.querySelectorAll('channel, canal').forEach(item => {
-                        const name = item.getAttribute('name') || 'Sin nombre';
-                        const url = item.querySelector('url')?.textContent;
-                        if (url) channels.push({name, link: url, type: 'web'});
-                    });
-                } else if (type === 'pre-events') {
-                    xml.querySelectorAll('evento').forEach(ev => {
-                        const name = ev.querySelector('nombre')?.textContent;
-                        const url = ev.querySelector('stream url')?.textContent;
-                        if (name && url) channels.push({name, link: url, type: 'web'});
-                    });
-                } else if (type === 'vpn') {
-                    xml.querySelectorAll('track').forEach(track => {
-                        const name = track.querySelector('title')?.textContent;
-                        const url = track.querySelector('url')?.textContent;
-                        if (name && url) channels.push({name, link: url, type: 'web'});
-                    });
-                }
-            }
-            
-            if (channels.length === 0) {
-                throw new Error('No se encontraron canales');
-            }
-            
-            render(channels);
-            
-        } catch (err) {
-            showError(`${err.message}`);
-            // Fallback a listas incorporadas
-            render(LISTS[type] || []);
+        } catch(e) {
+            grid.innerHTML = `<div style="grid-column: 1/-1; color: red; text-align: center;">
+                <b>❌ ERROR:</b> ${e.message}<br><br>
+                Verifica la URL o prueba otra lista
+            </div>`;
         }
     }
 
-    function goBack() {
-        // Retrocede en el historial del iframe de Wiseplay
-        if (window.history.length > 1) {
-            window.history.back();
-        } else {
-            // Si no hay historial, recarga la página
-            window.location.reload();
-        }
-    }
-    
     // Cargar inicial
-    loadChannels('acex');
+    load('acex').then(() => console.log('Cargado'));
 </script>
 </body>
 </html>
