@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AF1CESTREAM</title>
+    <style>
+        :root {
+            --oro: #ffc107;
+            --oro-glow: rgba(255, 193, 7, 0.8);
+            --negro: #080808;
+            --tarjeta: rgba(30, 30, 30, 0.95);
+            --rojo: #ff4444;
+            --verde: #00c851;
+            --azul: #007bff;
+            --purpura: #9c27b0;
+            --naranja: #ff9800;
+        }
+
+        body { 
+            background: radial-gradient(circle at center, #1a1a1a 0%, var(--negro) 100%);
+            color: white; font-family: sans-serif; margin: 0; padding: 0; overflow: hidden;
+        }
+
+        .header {
+            position: fixed; top: 0; left: 0; right: 0;
+            background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(15px);
+            padding: 8px 10px; z-index: 100; border-bottom: 2px solid var(--oro);
+            text-align: center;
+        }
+
+        .header-top { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px; }
+        .logo { width: 30px; height: 30px; filter: drop-shadow(0 0 5px var(--oro)); }
+        .title { font-size: 18px; color: var(--oro); margin: 0; font-weight: bold; letter-spacing: 1px; }
+
+        .download-buttons { display: flex; gap: 6px; justify-content: center; margin-bottom: 8px; flex-wrap: wrap; align-items: center; }
+        
+        .list-btn {
+            padding: 6px 10px; border-radius: 4px; font-size: 10px; 
+            font-weight: bold; text-transform: uppercase; cursor: pointer; 
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white; transition: all 0.3s ease;
+            opacity: 0.5; transform: scale(0.9);
+        }
+
+        .list-btn.active {
+            opacity: 1; transform: scale(1.1);
+            border: 1.5px solid var(--oro);
+            box-shadow: 0 0 15px var(--oro-glow);
+        }
+        
+        .btn-canales { background: #333; }
+        .btn-ev1 { background: var(--verde); }
+        .btn-ev2 { background: var(--azul); }
+        .btn-ev3 { background: var(--purpura); }
+        .btn-ev4 { background: var(--naranja); }
+
+        .controls-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
+        #search {
+            width: 120px; padding: 5px 10px; border-radius: 4px; border: 1px solid #444;
+            background: rgba(255,255,255,0.05); color: white; font-size: 11px; outline: none;
+        }
+
+        .main-content { padding-top: 170px; height: 100vh; overflow-y: auto; padding-bottom: 100px; box-sizing: border-box; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; padding: 10px; }
+        .card {
+            background: var(--tarjeta); padding: 12px; border-radius: 12px; text-align: center;
+            border: 1px solid rgba(255,255,255,0.1); transition: 0.3s;
+        }
+        .card:hover { border-color: var(--oro); transform: translateY(-3px); }
+        .card img { width: 40px; height: 40px; margin-bottom: 8px; }
+        .card span { font-size: 10px; color: #eee; display: block; font-weight: bold; line-height: 1.2; }
+
+        #player-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 2000; justify-content: center; align-items: center;
+        }
+        .modal-container { 
+            position: relative; width: 90%; max-width: 900px; 
+            aspect-ratio: 16/9; background: #000;
+        }
+        
+        @media (orientation: landscape) {
+            .modal-container { height: 80vh; width: auto; aspect-ratio: 16/9; }
+        }
+
+        iframe { width: 100%; height: 100%; border: none; background: #000; }
+        
+        .close-mini-bottom {
+            position: absolute; bottom: 10px; left: 10px; 
+            background: var(--rojo); color: white; border: none; 
+            padding: 5px 12px; border-radius: 4px;
+            font-size: 10px; font-weight: bold; cursor: pointer; z-index: 2100;
+            text-transform: uppercase; box-shadow: 0 0 10px rgba(0,0,0,0.8);
+        }
+
+        .external-btn {
+            position: absolute; bottom: 10px; right: 10px; 
+            background: var(--oro); color: var(--negro); border: none; 
+            padding: 5px 12px; border-radius: 4px;
+            font-size: 10px; font-weight: bold; cursor: pointer; z-index: 2100;
+            text-transform: uppercase; box-shadow: 0 0 10px rgba(0,0,0,0.8);
+        }
+
+        footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; padding: 10px; font-size: 9px; color: var(--oro); background: rgba(5,5,5,0.98); border-top: 1px solid var(--oro); }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-top">
+        <img src="https://i.postimg.cc/hPgpp1t3/1768043171823-removebg-preview.png" alt="Logo" class="logo">
+        <h2 class="title">AF1<span>CESTREAM</span></h2>
+    </div>
+    <div class="download-buttons">
+        <div id="btn-main" class="list-btn btn-canales active" onclick="loadM3U(MAIN_M3U, true, this)">Canales Acex</div>
+        <div class="list-btn btn-ev1" onclick="loadM3U(EVENTS_M3U, true, this)">Eventos Acex</div>
+        <div class="list-btn btn-ev2" onclick="loadXML_Ev2(this)">Canales Pre</div>
+        <div class="list-btn btn-ev3" onclick="loadXML_Ev3(this)">Eventos Pre</div>
+        <div class="list-btn btn-ev4" onclick="loadXML_Ev4(this)">Eventos Pre + vpn</div>
+    </div>
+    <div class="controls-row">
+        <input type="text" id="search" placeholder="BUSCAR..." onkeyup="filter()">
+    </div>
+</div>
+
+<div class="main-content">
+    <div id="loading" style="text-align:center; padding:50px; color:var(--oro); font-weight: bold;">CARGANDO...</div>
+    <div id="channel-list" class="grid" style="display:none;"></div>
+</div>
+
+<div id="player-modal">
+    <div class="modal-container">
+        <button class="close-mini-bottom" onclick="closePlayer()">Cerrar</button>
+        <button class="external-btn" onclick="openExternal()">Abrir Externo</button>
+        <iframe id="video-iframe" 
+                src="" 
+                allowfullscreen 
+                allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                referrerpolicy="no-referrer"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock allow-top-navigation allow-orientation-lock allow-presentation">
+        </iframe>
+    </div>
+</div>
+
+<footer><b>AF1CIONADOS</b> • EL DEPORTE EN TUS MANOS</footer>
+
+<script>
+    const MAIN_M3U = 'https://raw.githubusercontent.com/Icastresana/lista1/refs/heads/main/Probando';
+    const EVENTS_M3U = 'https://raw.githubusercontent.com/Icastresana/lista1/main/eventos.m3u';
+    const XML_EV2 = 'https://raw.githubusercontent.com/tutw/platinsport-m3u-updater/refs/heads/main/lista_canales_DEPORTE-LIBRE.FANS.xml';
+    const XML_EV3 = 'https://raw.githubusercontent.com/tutw/platinsport-m3u-updater/refs/heads/main/eventos_livetv_sx_con_reproductores.xml';
+    const XML_EV4 = 'https://raw.githubusercontent.com/tutw/platinsport-m3u-updater/refs/heads/main/lista_sportsonlineci.xml';
+    const LOGO = 'https://i.postimg.cc/hPgpp1t3/1768043171823-removebg-preview.png';
+
+    let channels = [];
+    let currentUrl = '';
+
+    function setActive(el) {
+        document.querySelectorAll('.list-btn').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+    }
+
+    function render() {
+        document.getElementById('loading').style.display = 'none';
+        const list = document.getElementById('channel-list');
+        list.style.display = 'grid';
+        list.innerHTML = channels.map((c, i) => `
+            <div class="card" onclick="play(${i})">
+                <img src="${LOGO}" alt="Logo">
+                <span>${c.name}</span>
+            </div>
+        `).join('');
+    }
+
+    function loadM3U(u, f, el) {
+        setActive(el);
+        channels = [];
+        document.getElementById('loading').style.display = 'block';
+        fetch(u)
+            .then(r => r.text())
+            .then(t => {
+                const l = t.split('\n');
+                l.forEach((line, i) => {
+                    if (line.startsWith('#EXTINF:')) {
+                        const name = line.split(',')[1]?.trim();
+                        const link = l[i+1]?.trim();
+                        if (name && link) {
+                            channels.push({ name: name, link: link, type: f ? 'ace' : 'web' });
+                        }
+                    }
+                });
+                render();
+            })
+            .catch(err => {
+                document.getElementById('loading').textContent = 'Error al cargar lista';
+                console.error('Error M3U:', err);
+            });
+    }
+
+    function loadXML_Ev2(el) {
+        setActive(el);
+        channels = [];
+        document.getElementById('loading').style.display = 'block';
+        fetch(XML_EV2)
+            .then(r => r.text())
+            .then(t => {
+                const x = new DOMParser().parseFromString(t, "text/xml");
+                const items = x.querySelectorAll('channel, canal');
+                items.forEach(item => {
+                    const name = item.getAttribute('name') || item.getAttribute('nombre del canal');
+                    const url = item.querySelector('url')?.textContent;
+                    if (name && url) {
+                        channels.push({ name: name.trim(), link: url.trim(), type: 'web' });
+                    }
+                });
+                render();
+            })
+            .catch(err => {
+                document.getElementById('loading').textContent = 'Error al cargar lista';
+                console.error('Error XML EV2:', err);
+            });
+    }
+
+    function loadXML_Ev3(el) {
+        setActive(el);
+        channels = [];
+        document.getElementById('loading').style.display = 'block';
+        fetch(XML_EV3)
+            .then(r => r.text())
+            .then(t => {
+                const x = new DOMParser().parseFromString(t, "text/xml");
+                const events = x.getElementsByTagName("evento");
+                Array.from(events).forEach(ev => {
+                    const nombre = ev.getElementsByTagName("nombre")[0]?.textContent;
+                    const stream = ev.getElementsByTagName("stream")[0];
+                    const url = stream?.getElementsByTagName("url")[0]?.textContent;
+                    if (nombre && url) {
+                        channels.push({ name: nombre.trim(), link: url.trim(), type: 'web' });
+                    }
+                });
+                render();
+            })
+            .catch(err => {
+                document.getElementById('loading').textContent = 'Error al cargar lista';
+                console.error('Error XML EV3:', err);
+            });
+    }
+
+    function loadXML_Ev4(el) {
+        setActive(el);
+        channels = [];
+        document.getElementById('loading').style.display = 'block';
+        fetch(XML_EV4)
+            .then(r => r.text())
+            .then(data => {
+                const x = new DOMParser().parseFromString(data, "text/xml");
+                const tracks = x.getElementsByTagName("track");
+                Array.from(tracks).forEach(t => {
+                    const name = t.getElementsByTagName("title")[0]?.textContent;
+                    const urls = t.getElementsByTagName("url");
+                    if (name && urls.length > 0) {
+                        channels.push({ name: name.trim(), link: urls[0].textContent.trim(), type: 'web' });
+                    }
+                });
+                render();
+            })
+            .catch(err => {
+                document.getElementById('loading').textContent = 'Error al cargar lista';
+                console.error('Error XML EV4:', err);
+            });
+    }
+
+    function play(i) {
+        const c = channels[i];
+        if (!c || !c.link) return;
+        
+        let url = c.link.trim();
+        
+        // Manejo especial para YouTube
+        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+            let id = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('/').pop().split('?')[0];
+            url = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
+        }
+
+        if (c.type === 'ace' || url.includes('acestream://')) {
+            // Para Acestream, abrir directamente
+            window.location.href = url.includes('acestream://') ? url : 'acestream://' + url;
+        } else {
+            // Para contenido web, usar iframe con sandbox configurado
+            currentUrl = url;
+            const iframe = document.getElementById('video-iframe');
+            iframe.src = url;
+            document.getElementById('player-modal').style.display = 'flex';
+        }
+    }
+
+    function closePlayer() {
+        document.getElementById('player-modal').style.display = 'none';
+        document.getElementById('video-iframe').src = '';
+        currentUrl = '';
+    }
+
+    function openExternal() {
+        if (currentUrl) {
+            window.open(currentUrl, '_blank');
+        }
+    }
+
+    function filter() {
+        const q = document.getElementById('search').value.toLowerCase();
+        const f = channels.filter(c => c.name.toLowerCase().includes(q));
+        document.getElementById('channel-list').innerHTML = f.map((c, i) => {
+            const originalIndex = channels.indexOf(c);
+            return `<div class="card" onclick="play(${originalIndex})"><img src="${LOGO}"><span>${c.name}</span></div>`;
+        }).join('');
+    }
+
+    // Cargar lista inicial
+    loadM3U(MAIN_M3U, true, document.getElementById('btn-main'));
+</script>
+</body>
+</html>
