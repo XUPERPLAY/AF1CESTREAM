@@ -71,35 +71,32 @@
         .card img { width: 40px; height: 40px; margin-bottom: 8px; }
         .card span { font-size: 10px; color: #eee; display: block; font-weight: bold; line-height: 1.2; }
 
-        #player-modal {
+        .playing-modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 2000; justify-content: center; align-items: center;
-        }
-        .modal-container { 
-            position: relative; width: 90%; max-width: 900px; 
-            aspect-ratio: 16/9; background: #000;
+            background: #000; z-index: 2000; flex-direction: column; justify-content: center; align-items: center;
         }
         
-        @media (orientation: landscape) {
-            .modal-container { height: 80vh; width: auto; aspect-ratio: 16/9; }
+        .playing-info {
+            color: var(--oro); font-size: 16px; font-weight: bold; margin-bottom: 20px;
+            text-align: center; padding: 0 20px;
         }
 
-        iframe { width: 100%; height: 100%; border: none; background: #000; }
+        .spinner {
+            width: 50px; height: 50px; border: 3px solid rgba(255, 193, 7, 0.3);
+            border-top: 3px solid var(--oro); border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
         
-        .close-mini-bottom {
-            position: absolute; bottom: 10px; left: 10px; 
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .close-btn {
             background: var(--rojo); color: white; border: none; 
-            padding: 5px 12px; border-radius: 4px;
-            font-size: 10px; font-weight: bold; cursor: pointer; z-index: 2100;
-            text-transform: uppercase; box-shadow: 0 0 10px rgba(0,0,0,0.8);
-        }
-
-        .external-btn {
-            position: absolute; bottom: 10px; right: 10px; 
-            background: var(--oro); color: var(--negro); border: none; 
-            padding: 5px 12px; border-radius: 4px;
-            font-size: 10px; font-weight: bold; cursor: pointer; z-index: 2100;
-            text-transform: uppercase; box-shadow: 0 0 10px rgba(0,0,0,0.8);
+            padding: 8px 16px; border-radius: 4px; font-size: 12px; font-weight: bold; 
+            cursor: pointer; text-transform: uppercase; box-shadow: 0 0 10px rgba(0,0,0,0.8);
         }
 
         footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; padding: 10px; font-size: 9px; color: var(--oro); background: rgba(5,5,5,0.98); border-top: 1px solid var(--oro); }
@@ -129,18 +126,10 @@
     <div id="channel-list" class="grid" style="display:none;"></div>
 </div>
 
-<div id="player-modal">
-    <div class="modal-container">
-        <button class="close-mini-bottom" onclick="closePlayer()">Cerrar</button>
-        <button class="external-btn" onclick="openExternal()">Abrir Externo</button>
-        <iframe id="video-iframe" 
-                src="" 
-                allowfullscreen 
-                allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                referrerpolicy="no-referrer"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock allow-top-navigation allow-orientation-lock allow-presentation">
-        </iframe>
-    </div>
+<div id="player-modal" class="playing-modal">
+    <div class="spinner"></div>
+    <div class="playing-info">CARGANDO REPRODUCTOR...</div>
+    <button class="close-btn" onclick="closePlayer()">VOLVER A LISTA</button>
 </div>
 
 <footer><b>AF1CIONADOS</b> • EL DEPORTE EN TUS MANOS</footer>
@@ -277,33 +266,39 @@
         
         let url = c.link.trim();
         
-        // Manejo especial para YouTube
+        // Manejo YouTube
         if (url.includes('youtube.com') || url.includes('youtu.be')) {
             let id = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('/').pop().split('?')[0];
             url = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
         }
 
         if (c.type === 'ace' || url.includes('acestream://')) {
-            // Para Acestream, abrir directamente
+            // Acestream: abrir directamente
             window.location.href = url.includes('acestream://') ? url : 'acestream://' + url;
         } else {
-            // Para contenido web, usar iframe con sandbox configurado
+            // WEB: Delegar a Wiseplay directamente
             currentUrl = url;
-            const iframe = document.getElementById('video-iframe');
-            iframe.src = url;
-            document.getElementById('player-modal').style.display = 'flex';
+            showPlayerModal();
+            
+            // Usar timeout para asegurar que el modal se muestra antes de redirigir
+            setTimeout(() => {
+                // Redirigir a la URL directamente
+                // Wiseplay detectará si es un stream y usará su reproductor nativo
+                window.location.href = url;
+            }, 300);
         }
+    }
+
+    function showPlayerModal() {
+        document.getElementById('player-modal').style.display = 'flex';
     }
 
     function closePlayer() {
         document.getElementById('player-modal').style.display = 'none';
-        document.getElementById('video-iframe').src = '';
         currentUrl = '';
-    }
-
-    function openExternal() {
-        if (currentUrl) {
-            window.open(currentUrl, '_blank');
+        // Volver atrás si es posible
+        if (window.history.length > 1) {
+            window.history.back();
         }
     }
 
@@ -318,6 +313,13 @@
 
     // Cargar lista inicial
     loadM3U(MAIN_M3U, true, document.getElementById('btn-main'));
+
+    // Ocultar modal cuando se vuelve a la página
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted || performance.navigation.type === 2) {
+            document.getElementById('player-modal').style.display = 'none';
+        }
+    });
 </script>
 </body>
 </html>
